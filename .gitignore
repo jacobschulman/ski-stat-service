@@ -1,0 +1,43 @@
+# Dependencies
+node_modules/
+
+# Build output
+dist/
+build/
+
+# Environment variables
+.env
+.env.local
+
+# Database
+*.db
+*.db-journal
+*.db-shm
+*.db-wal
+
+# Data cache
+data/cache/**
+!data/cache/.gitkeep
+data/*.db
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Test coverage
+coverage/
+
+# Temp files
+tmp/
+temp/

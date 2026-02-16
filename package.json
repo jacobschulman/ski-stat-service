@@ -1,0 +1,52 @@
+{
+  "name": "ski-stat-service",
+  "version": "1.0.0",
+  "description": "Intelligent ski stats social media content generation service",
+  "main": "dist/index.js",
+  "scripts": {
+    "dev": "nodemon --exec ts-node src/index.ts",
+    "build": "tsc",
+    "start": "node dist/index.js",
+    "backfill": "ts-node src/scripts/backfillHistorical.ts",
+    "baselines": "ts-node src/scripts/buildBaselines.ts",
+    "generate": "ts-node src/scripts/generateTrainingData.ts",
+    "test-gen": "ts-node src/scripts/testGeneration.ts",
+    "generate-slack": "ts-node src/scripts/generateAndPost.ts",
+    "test-x": "ts-node src/scripts/testXPost.ts",
+    "post-one": "ts-node src/scripts/testXPost.ts --post",
+    "deploy": "./scripts/deploy.sh"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/jacobschulman/ski-stat-service.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/jacobschulman/ski-stat-service/issues"
+  },
+  "homepage": "https://github.com/jacobschulman/ski-stat-service#readme",
+  "devDependencies": {
+    "@types/better-sqlite3": "^7.6.13",
+    "@types/express": "^5.0.6",
+    "@types/node": "^25.1.0",
+    "@types/node-cron": "^3.0.11",
+    "@types/uuid": "^10.0.0",
+    "nodemon": "^3.1.11",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.9.3"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.71.2",
+    "@slack/bolt": "^4.6.0",
+    "better-sqlite3": "^12.6.2",
+    "dotenv": "^17.2.3",
+    "express": "^5.2.1",
+    "node-cron": "^4.2.1",
+    "twitter-api-v2": "^1.29.0",
+    "uuid": "^13.0.0",
+    "zod": "^4.3.6"
+  }
+}

@@ -1,0 +1,13 @@
+services:
+  ski-stats:
+    build: .
+    container_name: ski-stats-service
+    restart: unless-stopped
+    env_file: .env
+    volumes:
+      # Persist database and cached data outside the container
+      - ./data:/app/data
+    environment:
+      - NODE_ENV=production
+      - DATABASE_PATH=/app/data/ski-stats.db
+      - SCHEDULER_ENABLED=true
