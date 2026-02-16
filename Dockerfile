@@ -5,17 +5,17 @@ WORKDIR /app
 # Install build dependencies for better-sqlite3 (native addon)
 RUN apk add --no-cache python3 make g++
 
-# Install dependencies
+# Install all dependencies (including devDependencies for build)
 COPY package.json package-lock.json ./
-RUN npm ci --omit=dev
+RUN npm ci
 
 # Copy source and build
 COPY tsconfig.json ./
 COPY src/ ./src/
 RUN npx tsc
 
-# Clean up build tools
-RUN apk del python3 make g++
+# Remove devDependencies and build tools after compile
+RUN npm prune --omit=dev && apk del python3 make g++
 
 # Create data directory
 RUN mkdir -p /app/data
