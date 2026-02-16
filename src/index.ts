@@ -90,8 +90,8 @@ async function main() {
   const apiRouter = createApiRouter(queries, scheduler || undefined);
   app.use('/api', apiRouter);
 
-  // SPA fallback
-  app.get('*', (_req, res) => {
+  // SPA fallback (Express 5 syntax)
+  app.get('/{*splat}', (_req, res) => {
     res.sendFile(path.join(__dirname, '..', 'public', 'index.html'));
   });
 
