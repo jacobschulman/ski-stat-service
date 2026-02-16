@@ -1,4 +1,6 @@
 import 'dotenv/config';
+import express from 'express';
+import path from 'path';
 import cron from 'node-cron';
 import { initDatabase } from './db/schema';
 import { DatabaseQueries } from './db/queries';
@@ -8,11 +10,12 @@ import { ClaudeGenerator } from './services/claudeGenerator';
 import { SlackBot } from './services/slackBot';
 import { TwitterPoster } from './services/twitterPoster';
 import { PostScheduler } from './services/postScheduler';
+import { createApiRouter } from './api/routes';
 
 async function main() {
   console.log('═══════════════════════════════════════════════');
   console.log('  Ski Stats Service');
-  console.log('  Always-on: Generate → Slack → X');
+  console.log('  Always-on: Generate → Slack → X → Dashboard');
   console.log('═══════════════════════════════════════════════\n');
 
   // Init DB
@@ -79,6 +82,24 @@ async function main() {
     console.log('ℹ️  X posting disabled (no X_API_KEY set). Slack-only mode.');
   }
 
+  // Start Express dashboard + API
+  const app = express();
+  app.use(express.json());
+  app.use(express.static(path.join(__dirname, '..', 'public')));
+
+  const apiRouter = createApiRouter(queries, scheduler || undefined);
+  app.use('/api', apiRouter);
+
+  // SPA fallback
+  app.get('*', (_req, res) => {
+    res.sendFile(path.join(__dirname, '..', 'public', 'index.html'));
+  });
+
+  const port = parseInt(process.env.PORT || '3000', 10);
+  const server = app.listen(port, '0.0.0.0', () => {
+    console.log(`🌐 Dashboard running at http://localhost:${port}`);
+  });
+
   // Schedule daily content generation
   const generationTime = process.env.GENERATION_TIME || '08:00';
   const [genHour, genMinute] = generationTime.split(':');
@@ -100,6 +121,7 @@ async function main() {
   // Graceful shutdown
   const shutdown = async () => {
     console.log('\nShutting down...');
+    server.close();
     scheduler?.stop();
     await slackBot.stop();
     db.close();
@@ -126,7 +148,10 @@ async function generateAndPost(
     const formattedAnalysis = analyzer.formatForPrompt(analysis);
 
     const postCount = parseInt(process.env.POST_COUNT || '12', 10);
-    const { system, user } = buildGenerationPrompt(formattedAnalysis, postCount);
+
+    // Check for prompt override from dashboard
+    const promptOverride = queries.getLearningPreference('master_prompt_override');
+    const { system, user } = buildGenerationPrompt(formattedAnalysis, postCount, undefined, promptOverride);
 
     console.log(`🤖 Generating ${postCount} posts with Claude...`);
     const generator = new ClaudeGenerator(apiKey);
@@ -139,7 +164,6 @@ async function generateAndPost(
     console.log(`💾 ${posts.length} posts saved to database`);
 
     // Post to Slack for review
-    const channelId = process.env.SLACK_CHANNEL_ID!;
     console.log(`📤 Posting ${posts.length} posts to Slack for review...`);
     await slackBot.postForReview(posts);
     console.log('✅ Posts sent to Slack!');

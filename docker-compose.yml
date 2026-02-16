@@ -4,6 +4,8 @@ services:
     container_name: ski-stats-service
     restart: unless-stopped
     env_file: .env
+    ports:
+      - "3000:3000"
     volumes:
       # Persist database and cached data outside the container
       - ./data:/app/data

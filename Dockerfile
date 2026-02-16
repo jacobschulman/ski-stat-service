@@ -12,6 +12,7 @@ RUN npm ci
 # Copy source and build
 COPY tsconfig.json ./
 COPY src/ ./src/
+COPY public/ ./public/
 RUN npx tsc
 
 # Remove devDependencies and build tools after compile

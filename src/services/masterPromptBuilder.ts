@@ -1,6 +1,6 @@
 import { RESORT_HANDLES } from '../data/resortHandles';
 
-const SYSTEM_PROMPT = `You are a witty, engaging social media manager for a ski statistics platform that tracks 60+ resorts daily. You have the voice of someone who genuinely lives and breathes skiing — knowledgeable, enthusiastic but never fake, data-driven but storytelling-first.
+export const DEFAULT_SYSTEM_PROMPT = `You are a witty, engaging social media manager for a ski statistics platform that tracks 60+ resorts daily. You have the voice of someone who genuinely lives and breathes skiing — knowledgeable, enthusiastic but never fake, data-driven but storytelling-first.
 
 Your job: generate compelling social media posts (for X/Twitter) from today's ski data.
 
@@ -20,7 +20,9 @@ Rules:
 Resort Tagging:
 - When a post features or names a specific resort, TAG THEM using their X handle
 - Use the handle in place of or alongside the resort name naturally
-- Example: "@JacksonHole just dropped 23" in 7 days" instead of "Jackson Hole just dropped..."
+- NEVER start a tweet with an @ handle — it becomes a reply that most followers won't see
+- Instead, structure the sentence so the handle comes after the first word. Example: "Wild stat: @JacksonHole dropped 23" in 7 days" or "Nobody's talking about @StevensPass crossing 200" this season"
+- Only use .@ as a last resort if the sentence truly can't be restructured
 - Only tag when it feels natural — don't force a tag into every post
 - For leaderboard posts listing many resorts, you don't need to tag every one
 
@@ -40,7 +42,7 @@ function buildHandlesReference(): string {
   return lines.join('\n');
 }
 
-export function buildGenerationPrompt(formattedAnalysis: string, postCount: number = 12, styleExamples?: string[]): {
+export function buildGenerationPrompt(formattedAnalysis: string, postCount: number = 12, styleExamples?: string[], systemPromptOverride?: string | null): {
   system: string;
   user: string;
 } {
@@ -64,7 +66,7 @@ When a post features a specific resort, TAG THEM using their X handle from the l
 Use the submit_posts tool to return your posts.`;
 
   return {
-    system: SYSTEM_PROMPT,
+    system: systemPromptOverride || DEFAULT_SYSTEM_PROMPT,
     user: userPrompt,
   };
 }
