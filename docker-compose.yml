@@ -9,6 +9,8 @@ services:
     volumes:
       # Persist database and cached data outside the container
       - ./data:/app/data
+      # Persist prompt file edits back to host for git tracking
+      - ./prompts:/app/prompts
     environment:
       - NODE_ENV=production
       - DATABASE_PATH=/app/data/ski-stats.db

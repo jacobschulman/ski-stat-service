@@ -82,12 +82,20 @@ async function main() {
     console.log('ℹ️  X posting disabled (no X_API_KEY set). Slack-only mode.');
   }
 
+  // Shared instances for API routes + generation
+  const generator = new ClaudeGenerator(apiKey);
+  const analyzer = new Analyzer(queries);
+
   // Start Express dashboard + API
   const app = express();
   app.use(express.json());
   app.use(express.static(path.join(__dirname, '..', 'public')));
 
-  const apiRouter = createApiRouter(queries, scheduler || undefined);
+  const apiRouter = createApiRouter(queries, {
+    scheduler: scheduler || undefined,
+    claudeGenerator: generator,
+    analyzer: analyzer,
+  });
   app.use('/api', apiRouter);
 
   // SPA fallback (Express 5 syntax)

@@ -13,6 +13,7 @@ RUN npm ci
 COPY tsconfig.json ./
 COPY src/ ./src/
 COPY public/ ./public/
+COPY prompts/ ./prompts/
 RUN npx tsc
 
 # Remove devDependencies and build tools after compile

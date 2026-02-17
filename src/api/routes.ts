@@ -1,10 +1,18 @@
 import { Router, Request, Response } from 'express';
 import { DatabaseQueries } from '../db/queries';
-import { DEFAULT_SYSTEM_PROMPT } from '../services/masterPromptBuilder';
+import { DEFAULT_SYSTEM_PROMPT, readSystemPromptFromFile, writeSystemPromptToFile, buildGenerationPrompt } from '../services/masterPromptBuilder';
+import { ClaudeGenerator } from '../services/claudeGenerator';
+import { Analyzer } from '../services/analyzer';
+
+interface ApiRouterOptions {
+  scheduler?: { getSchedulePreview: () => Array<{ post: any; estimatedTime: Date }> };
+  claudeGenerator?: ClaudeGenerator;
+  analyzer?: Analyzer;
+}
 
 export function createApiRouter(
   queries: DatabaseQueries,
-  scheduler?: { getSchedulePreview: () => Array<{ post: any; estimatedTime: Date }> }
+  options: ApiRouterOptions = {}
 ): Router {
   const router = Router();
 
@@ -55,10 +63,12 @@ export function createApiRouter(
   // GET /api/prompt
   router.get('/prompt', (_req: Request, res: Response) => {
     const override = queries.getLearningPreference('master_prompt_override');
+    const filePrompt = readSystemPromptFromFile();
     res.json({
-      prompt: override || DEFAULT_SYSTEM_PROMPT,
-      isCustom: !!override,
-      default: DEFAULT_SYSTEM_PROMPT,
+      prompt: override || filePrompt,
+      isCustom: !!override || filePrompt !== DEFAULT_SYSTEM_PROMPT,
+      default: filePrompt,
+      factoryDefault: DEFAULT_SYSTEM_PROMPT,
     });
   });
 
@@ -69,20 +79,67 @@ export function createApiRouter(
       res.status(400).json({ error: 'prompt must be a string' });
       return;
     }
-    // If it matches the default exactly, clear the override
-    if (prompt.trim() === DEFAULT_SYSTEM_PROMPT.trim()) {
-      queries.setLearningPreference('master_prompt_override', null);
-      res.json({ saved: true, isCustom: false });
-    } else {
-      queries.setLearningPreference('master_prompt_override', prompt);
-      res.json({ saved: true, isCustom: true });
+
+    // Write to git-tracked file
+    const fileWritten = writeSystemPromptToFile(prompt);
+
+    // Clear DB override — file is now the source of truth
+    queries.setLearningPreference('master_prompt_override', null);
+
+    res.json({
+      saved: true,
+      fileWritten,
+      isCustom: prompt.trim() !== DEFAULT_SYSTEM_PROMPT.trim(),
+    });
+  });
+
+  // POST /api/prompt/test  { prompt: string }
+  router.post('/prompt/test', async (req: Request, res: Response) => {
+    const { prompt } = req.body;
+    if (typeof prompt !== 'string' || prompt.trim().length === 0) {
+      res.status(400).json({ error: 'prompt must be a non-empty string' });
+      return;
+    }
+
+    if (!options.claudeGenerator || !options.analyzer) {
+      res.status(503).json({ error: 'Test generation not available' });
+      return;
+    }
+
+    try {
+      // Find the most recent date with data
+      const recentAggregates = queries.getAllHistoricalAggregates(1);
+      if (recentAggregates.length === 0) {
+        res.status(404).json({ error: 'No ski data available. Run a data fetch first.' });
+        return;
+      }
+
+      const targetDate = recentAggregates[0].date;
+      const analysis = await options.analyzer.analyzeDate(targetDate);
+      const formattedAnalysis = options.analyzer.formatForPrompt(analysis);
+
+      const { system, user } = buildGenerationPrompt(formattedAnalysis, 4, undefined, prompt);
+      const posts = await options.claudeGenerator.generatePosts(system, user, targetDate);
+
+      res.json({
+        posts: posts.map(p => ({
+          content: p.final_content,
+          post_type: p.post_type,
+          reasoning: p.metadata.reasoning,
+          char_count: p.final_content.length,
+        })),
+        dataDate: targetDate,
+      });
+    } catch (err: any) {
+      console.error('Test generation failed:', err.message);
+      res.status(500).json({ error: `Generation failed: ${err.message}` });
     }
   });
 
   // GET /api/schedule
   router.get('/schedule', (_req: Request, res: Response) => {
-    if (!scheduler) { res.json({ queue: [], message: 'Scheduler not running' }); return; }
-    const preview = scheduler.getSchedulePreview();
+    if (!options.scheduler) { res.json({ queue: [], message: 'Scheduler not running' }); return; }
+    const preview = options.scheduler.getSchedulePreview();
     res.json({
       queue: preview.map(p => ({
         id: p.post.id,

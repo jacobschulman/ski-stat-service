@@ -153,9 +153,41 @@
     <div class="flex gap-3 items-center">
       <button @click="savePrompt()"
               class="px-4 py-2 bg-blue-600 text-white text-sm rounded hover:bg-blue-700">Save</button>
+      <button @click="testPrompt()" :disabled="testing"
+              class="px-4 py-2 bg-purple-600 text-white text-sm rounded hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed">
+        <span x-show="!testing">Test</span>
+        <span x-show="testing">Generating...</span>
+      </button>
       <button @click="resetPrompt()" x-show="isCustomPrompt"
               class="px-4 py-2 bg-gray-800 text-gray-400 text-sm rounded hover:bg-gray-700">Reset to Default</button>
       <span x-show="promptSaved" x-transition class="text-green-400 text-sm">Saved!</span>
+    </div>
+
+    <!-- Test Error -->
+    <div x-show="testError" class="mt-4 p-3 bg-red-900/30 border border-red-800 rounded text-red-300 text-sm">
+      <span x-text="testError"></span>
+    </div>
+
+    <!-- Test Results -->
+    <div x-show="testResults.length > 0" class="mt-6 space-y-3">
+      <div class="flex justify-between items-center">
+        <h3 class="text-sm font-semibold text-purple-400">Test Results</h3>
+        <div class="flex items-center gap-3">
+          <span x-show="testDataDate" class="text-xs text-gray-600" x-text="'Data from ' + testDataDate"></span>
+          <button @click="testResults = []; testError = ''" class="text-xs text-gray-500 hover:text-gray-300">Clear</button>
+        </div>
+      </div>
+      <template x-for="(result, i) in testResults" :key="i">
+        <div class="border border-gray-800 rounded-lg p-3 bg-gray-900">
+          <div class="flex justify-between items-start mb-1">
+            <span class="text-xs text-gray-600 bg-gray-800 px-2 py-0.5 rounded" x-text="result.post_type"></span>
+            <span class="text-xs font-mono" :class="result.char_count > 280 ? 'text-red-400' : 'text-gray-500'"
+                  x-text="result.char_count + ' chars'"></span>
+          </div>
+          <p class="text-gray-200 text-sm leading-relaxed mt-2" x-text="result.content"></p>
+          <p x-show="result.reasoning" class="text-xs text-gray-600 mt-1" x-text="result.reasoning"></p>
+        </div>
+      </template>
     </div>
   </div>
 
@@ -181,6 +213,10 @@ function dashboard() {
     loading: false,
     editingId: null,
     editContent: '',
+    testing: false,
+    testResults: [],
+    testDataDate: '',
+    testError: '',
 
     async init() {
       await this.loadStats();
@@ -237,6 +273,31 @@ function dashboard() {
       this.prompt = this.defaultPrompt;
       await this.savePrompt();
       this.isCustomPrompt = false;
+    },
+
+    async testPrompt() {
+      this.testing = true;
+      this.testResults = [];
+      this.testError = '';
+      this.testDataDate = '';
+      try {
+        const res = await fetch('/api/prompt/test', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ prompt: this.prompt }),
+        });
+        const data = await res.json();
+        if (!res.ok) {
+          this.testError = data.error || 'Test generation failed';
+          return;
+        }
+        this.testResults = data.posts;
+        this.testDataDate = data.dataDate;
+      } catch (err) {
+        this.testError = 'Network error: ' + err.message;
+      } finally {
+        this.testing = false;
+      }
     },
 
     startEdit(post) {
