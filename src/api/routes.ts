@@ -8,6 +8,7 @@ interface ApiRouterOptions {
   scheduler?: { getSchedulePreview: () => Array<{ post: any; estimatedTime: Date }> };
   claudeGenerator?: ClaudeGenerator;
   analyzer?: Analyzer;
+  triggerGeneration?: () => Promise<void>;
 }
 
 export function createApiRouter(
@@ -133,6 +134,21 @@ export function createApiRouter(
     } catch (err: any) {
       console.error('Test generation failed:', err.message);
       res.status(500).json({ error: `Generation failed: ${err.message}` });
+    }
+  });
+
+  // POST /api/generate — manually trigger the daily generation pipeline
+  router.post('/generate', async (_req: Request, res: Response) => {
+    if (!options.triggerGeneration) {
+      res.status(503).json({ error: 'Generation not available' });
+      return;
+    }
+    try {
+      res.json({ started: true, message: 'Generation triggered. Check Slack for results.' });
+      // Run after responding so the request doesn't hang
+      options.triggerGeneration().catch(err => console.error('Manual generation failed:', err.message));
+    } catch (err: any) {
+      res.status(500).json({ error: err.message });
     }
   });
 

@@ -95,6 +95,7 @@ async function main() {
     scheduler: scheduler || undefined,
     claudeGenerator: generator,
     analyzer: analyzer,
+    triggerGeneration: () => generateAndPost(queries, apiKey, slackBot),
   });
   app.use('/api', apiRouter);
 

@@ -1,0 +1,13 @@
+ssh root@178.156.235.185 'cat > /opt/yoke-product.git/hooks/post-receive && chmod +x /opt/yoke-product.git/hooks/post-receive' << 'HOOK'
+#!/bin/bash
+echo "=== Deploying Yoke Insights ==="
+GIT_WORK_TREE=/opt/yoke-product git checkout -f
+cd /opt/yoke-product
+export GIT_HASH=$(git --git-dir=/opt/yoke-product.git log -1 --pretty=%h)
+export GIT_MESSAGE=$(git --git-dir=/opt/yoke-product.git log -1 --pretty=%s)
+export GIT_TIMESTAMP=$(git --git-dir=/opt/yoke-product.git log -1 --pretty=%ci)
+export GIT_BRANCH=$(git --git-dir=/opt/yoke-product.git symbolic-ref --short HEAD 2>/dev/null || echo master)
+echo "Building commit: $GIT_HASH - $GIT_MESSAGE"
+docker compose up -d --build
+echo "=== Deploy complete ==="
+HOOK

@@ -10,7 +10,7 @@
 
 set -e
 
-UNRAID_HOST="${UNRAID_HOST:-tower}"
+UNRAID_HOST="${UNRAID_HOST:-jasnas}"
 UNRAID_USER="${UNRAID_USER:-root}"
 UNRAID_APP_DIR="${UNRAID_APP_DIR:-/mnt/user/appdata/ski-stat-service}"
 
